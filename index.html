@@ -1,0 +1,509 @@
+<!--
+	
+	Exemplo de Ray Casting utilizando JavaScript
+	Angelito Goulart
+	www.angelitomg.com
+
+	Thanks to: 
+	https://dev.opera.com/articles/3d-games-with-canvas-and-raycasting-part-1/
+
+-->
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>RayCast JS</title>
+		<style>
+
+			* { margin: 0; padding: 0; }
+
+			#gameCanvas { 
+				display: block; margin: auto; margin-top: 50px; 
+			}
+
+			#screen {
+				position : relative;
+				width : 320px;
+				height : 200px;
+				border : 1px solid black;
+				overflow : hidden;
+				margin: auto;
+				margin-top: 50px;
+			}
+
+			#ceiling { 
+				position: absolute;
+				width: 100%
+				height: 50%;
+				background: aqua;
+			}
+
+			#floor {
+				position: absolute;
+				width: 100%;
+				height: 100%;
+				background: grey;
+			}
+
+		</style>
+	</head>
+	<body>
+		<div id="screen">
+			<div id="ceiling"></div>
+			<div id="floor"></div>
+		</div>
+		<canvas id="gameCanvas"></canvas>
+	</body>
+	<script>
+
+		// Mapa do jogo
+		var map = [
+			[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,2,2,2,0,0,0,0,0,0,0,0,2,0,2,2,2,0,2,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,2,0,2,0,0,0,0,0,0,0,0,2,2,2,0,2,2,2,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,3,3,0,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,0,0,0,0,3,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,2,2,2,2,0,0,0,0,0,0,3,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,2,0,0,2,0,0,0,0,0,0,3,0,3,3,0,0,0,0,3,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,2,2,2,2,0,0,0,0,0,0,3,3,3,0,3,3,3,3,3,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+			[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+		];
+
+		// Tamanho da tela
+		var screenWidth = 320;
+		var screenHeight = 200;
+
+		var stripWidth = 4;
+		var numRays = Math.ceil(screenWidth / stripWidth);
+
+		var fov = 60 * Math.PI / 180;
+		var fovHalf = fov / 2;
+		var viewDistance = (screenWidth / 2) / Math.tan((fov / 2));
+		var twoPI = Math.PI * 2;
+
+		var numTextures = 4;
+
+		var screenStrips = [];
+
+		// Objeto que contem as informacoes sobre o jogador
+		var player = {
+
+			// Posicao do jogador no mapa
+			x: 20,
+			y: 20,
+
+			// Direcao que o jogador esta se movendo
+			// 1 -> se movendo para frente
+			// 0 -> parado
+			// -1 -> se movendo para tras
+			direction: 0,
+
+			// Rotacao que o jogador esta realizando
+			// 1 -> rotacao para a direita
+			// 0 -> parado
+			// -1 -> rotacao para a esquerda
+			rotation: 0,
+
+			// Velocidade que o jogador esta se movendo
+			speed: 0,
+
+			// Velocidade proporcional do jogador em relacao ao mapa
+			moveSpeed: 0.18,
+
+			// Velocidade de rotacao do jogador
+			rotationSpeed: 6
+
+
+		}
+
+		var mapWidth = 0;
+		var mapHeight = 0;
+		var mapScale = 4;
+
+		var canvas = document.getElementById("gameCanvas");
+		var ctx = null;
+
+		// Limpa o canvas
+		function clearCanvas()
+		{
+			ctx.save();
+			ctx.setTransform(1, 0, 0, 1, 0, 0);
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.restore();
+		}
+
+		// Funcao responsavel por ler as entradas do usuario
+		function readInput()
+		{
+			document.onkeydown = function(e){
+				e = e || window.event;
+				switch(e.keyCode) {
+					case 38: player.speed = 1; break;
+					case 40: player.speed = -1; break;
+					case 37: player.direction = -1; break;
+					case 39: player.direction = 1; break;
+				}
+			}
+			document.onkeyup = function(e){
+				e = e || window.event;
+				switch(e.keyCode) {
+					case 38:
+					case 40: 
+						player.speed = 0; break;
+					case 37:
+					case 39: 
+						player.direction = 0; break;
+				}
+			}
+		}
+
+		// Funcao utilizada para lancar os raios
+		function castRays()
+		{
+
+			// Indice que contem a faixa vertical que esta sendo desenhada
+			var stripIndex = 0;
+
+			// Percorre todos os raios
+			for (var i = 0; i < numRays; i++) {
+
+				// Calcula a posicao do raio na tela
+				var rayScreenPosition = (-numRays / 2 + i) * stripWidth;
+
+				// Calcula a distancia do raio
+				var rayViewDistance = Math.sqrt(rayScreenPosition * rayScreenPosition + viewDistance * viewDistance);
+
+				// Calcula o angulo do raio
+				var rayAngle = Math.asin(rayScreenPosition / rayViewDistance);
+
+				// Lanca o raio
+				castSingleRay(
+					player.rotation + rayAngle,
+					stripIndex++
+				);
+
+			}
+		}
+
+		// Funcao responsavel por lancar um unico raio
+		function castSingleRay(rayAngle, stripIndex)
+		{
+
+			// Determina que o angulo esteja entre 0 e 360 graus
+			rayAngle %= twoPI;
+			if (rayAngle < 0) rayAngle += twoPI;
+
+			// Obtem a direcao do usuario baseado no quadrante em que ele esta
+			var right = (rayAngle > twoPI * 0.75 || rayAngle < twoPI * 0.25);
+			var up = (rayAngle < 0 || rayAngle > Math.PI);
+
+			var wallType = 0;
+
+			var angleSin = Math.sin(rayAngle);
+			var angleCos = Math.cos(rayAngle);
+
+			// A distancia ate o bloco alvo
+			var distance = 0;
+
+			// As coordenadas do local onde o raio atingiu
+			var xHit = 0;
+			var yHit = 0;
+
+			// Que parte da textura vamos utilizar?
+			var textureX; 
+
+			// As coordenadas do bloco
+			var wallX;
+			var wallY;
+
+			var wallIsHorizontal = false;
+
+			// Inclicanao: tangente do angulo de inclinacao
+			var slope = angleSin / angleCos;
+			var dXVer = right ? 1 : - 1;
+			var dYVer = dXVer * slope;
+
+			// Posicao horizontal inicial, iniciando a partir de uma das paredes do bloco
+			var x = right ? Math.ceil(player.x) : Math.floor(player.x);
+
+			// Posicao vertical inicial
+			var y = player.y + (x - player.x) * slope;
+
+			// Checagem horizontal: primeiro encontre a extreminadade horizontal do bloco,
+			// entao percorra os blocos do mapa em busca de paredes.
+			while (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
+
+				var wallX = Math.floor(x + (right ? 0 : -1));
+				var wallY = Math.floor(y);
+
+				// Verifica se o bloco e uma parede
+				if (map[wallY][wallX] > 0) {
+					var distanceX = x - player.x;
+					var distanceY = y - player.y;
+
+					// A distancia do bloco atual ate o jogador
+					var distance = distanceX * distanceX + distanceY * distanceY;
+
+					// Obtem o tipo do bloco (sera necessario para definir a textura que sera utilizada)
+					wallType = map[wallY][wallX];
+					textureX = y % 1;
+
+					// Se o jogador estiver olhando para a esquerda, utilize uma textura diferente
+					if (!right) textureX = 1 - textureX;
+
+					// Salva as coordenadas de onde o raio atinigiu o bloco
+					xHit = x;
+					yHit = y;
+
+					wallIsHorizontal = true;
+
+					break;
+
+				}
+
+				x += dXVer;
+				y += dYVer;
+
+			}
+
+
+			// Checagem vertical: mesmo procedimento da checagem horizontal,
+			// porem verificamos se o bloco ja nao foi encontrado em uma 
+			// checagem anterior. Caso tenha sido, ficamos apenas com a menor 
+			// distancia
+			var slope = angleCos / angleSin;
+			var dYHor = up ? -1 : 1;
+			var dXHor = dYHor * slope;
+			var y = up ? Math.floor(player.y) : Math.ceil(player.y);
+			var x = player.x + (y - player.y) * slope;
+
+			while (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
+
+				var wallY = Math.floor(y + (up ? -1 : 0));
+				var wallX = Math.floor(x);
+
+				if (map[wallY][wallX] > 0) {
+
+					var distanceX = x - player.x;
+					var distanceY = y - player.y;
+					var blockDistance = distanceX * distanceX + distanceY * distanceY;
+
+					if (!distance || blockDistance < distance) {
+
+						distance = blockDistance;
+						xHit = x;
+						yHit = y;
+
+						wallType = map[wallY][wallX];
+						textureX = x % 1;
+						if (up) textureX = 1 - textureX;
+
+					}
+
+					break;
+
+				}
+
+				x += dXHor;
+				y += dYHor;
+
+			}
+
+			if (distance) {
+				
+				var strip = screenStrips[stripIndex];
+				distance = Math.sqrt(distance);
+
+				// Corrige o efeito olho de peixe
+				distance = distance * Math.cos(player.rotation - rayAngle);
+
+				// Obtem a distancia real da parede
+				var height = Math.round(viewDistance / distance);
+				var width = height * stripWidth;
+
+				// Topo da tela
+				var top = Math.round((screenHeight - height) / 2);
+
+				strip.style.height = height + "px";
+				strip.style.top = top + "px";
+
+				strip.img.style.height = Math.floor(height * numTextures) + "px";
+				strip.img.style.width = Math.floor(width * 2) + "px";
+				strip.img.style.top = -Math.floor(height * (wallType - 1)) + "px";
+
+				var texX = Math.round(textureX * width);
+				if (texX > width - stripWidth) {
+					texX = width - stripWidth;
+				}
+
+				strip.img.style.left = -texX + "px";
+
+			}
+
+ 		}
+
+ 		// Funcao responsavel por mostrar a direcao do jogador mapa
+		function drawRay(rayX, rayY) {
+			ctx.strokeStyle = "rgba(0,100,0,0.3)";
+			ctx.lineWidth = 0.5;
+			ctx.beginPath();
+			ctx.moveTo(player.x * mapScale, player.y * mapScale);
+			ctx.lineTo(
+				rayX * mapScale,
+				rayY * mapScale
+			);
+			ctx.closePath();
+			ctx.stroke();
+		}
+
+
+		// Funcao para detecao de colisao
+		function isBlocking(x, y)
+		{
+			if (y < 0 || y > mapHeight || x < 0 || x > mapWidth) return true;
+			if (map[Math.floor(y)][Math.floor(x)] != 0) return true;
+		}
+
+
+		// Funcao responsavel por mover o jogador
+		function move()
+		{
+			var moveStep = player.speed * player.moveSpeed;
+			player.rotation += player.direction * player.rotationSpeed * Math.PI / 180;
+			var newX = player.x + Math.cos(player.rotation) * moveStep;
+			var newY = player.y + Math.sin(player.rotation) * moveStep;
+
+			// Deteccao de colisao
+			if (isBlocking(newX, newY)) return;
+
+			player.x = newX;
+			player.y = newY;
+
+
+		}
+		
+
+		// Funcao responsavel por "imprimir" o jogador no mapa
+		function drawPlayer()
+		{
+				
+
+			ctx.beginPath();
+			ctx.fillRect(player.x * mapScale - 2, player.y * mapScale - 2, 4, 4);
+			ctx.fillStyle = 'red';
+			ctx.moveTo(player.x * mapScale, player.y * mapScale);
+			ctx.lineTo(
+				(player.x + Math.cos(player.rotation) * 4) * mapScale,
+				(player.y + Math.sin(player.rotation) * 4) * mapScale
+			);
+			ctx.stroke();
+			ctx.closePath();
+			
+			
+
+		}
+
+		// Funcao para impressao do mapa
+		function drawMap()
+		{
+
+			clearCanvas();
+
+			console.log('Tela limpa!');
+			console.log('mapWidth: ' + mapWidth + ' mapHeight: ' + mapHeight);
+			for (var y = 0; y < mapHeight; y++) {
+				for (var x = 0; x < mapWidth; x++) { 
+					var wall = map[y][x];
+					if (wall > 0) {
+						ctx.beginPath();
+						ctx.fillStyle = '#001200';
+						ctx.fillRect(x * mapScale, y * mapScale, mapScale, mapScale);
+						//ctx.stroke();
+						ctx.closePath();
+					}
+				}
+			} 
+			drawPlayer();
+		}
+
+
+		// Loop principal do jogo
+		function gameLoop()
+		{
+			readInput();
+			move();
+			drawMap();
+			drawPlayer();
+			castRays();
+		}
+
+
+		// Funcao responsavel por inserir os elementos na tela
+		function initScreen()
+		{
+			var screen = document.getElementById("screen");
+			for (i = 0; i < screenWidth; i += stripWidth) {
+
+				var strip = document.createElement('div');
+
+				strip.style.position = 'absolute';
+				strip.style.left = i + 'px';
+				strip.style.width = stripWidth + 'px';
+				strip.style.height = '0px';
+				strip.style.overflow = 'hidden';
+				strip.style.backgroundColor = 'magenta';
+
+				var img = new Image();
+				img.src = 'walls.png';
+				img.style.position = 'absolute';
+				img.style.left = '0px';
+
+				strip.appendChild(img);
+				strip.img = img;
+
+				screenStrips.push(strip);
+				screen.appendChild(strip);
+
+			}
+		}
+
+
+		// Inicializacao do jogo
+		function init()
+		{
+
+			mapWidth = map[0].length;
+			mapHeight = map.length;
+
+			canvas.width = mapWidth * mapScale;
+			canvas.height = mapHeight * mapScale;
+			canvas.style.width = (mapWidth * mapScale) + 'px';
+			canvas.style.height = (mapHeight * mapScale) + 'px';
+
+			ctx = canvas.getContext('2d');
+
+			initScreen();
+
+			setInterval(gameLoop, 1000/30);
+
+		}
+
+		init();
+
+	</script>
+</html>
